@@ -1,0 +1,95 @@
+#Se descarga la biblioteca Spacy
+!python -m spacy download en_core_web_sm # Se reincia el entorno de ejecución
+
+#Se carga la librería
+import spacy
+nlp = spacy.load('en_core_web_sm')
+
+#Se intalan los distintos paquetes que se van a utilizar
+import sys
+if 'google.colab' in sys.modules:
+    !pip install emoji --upgrade
+    !pip install pandas-profiling==2.*
+    !pip install plotly==4.*
+    !python -m spacy download es_core_news_sm
+    !pip install pyldavis
+    !pip install gensim
+    !pip install nltk
+    !pip install chart_studio
+    !pip install --upgrade autopep8
+    !pip install vaderSentiment
+    !pip install datatable
+    !pip install unidecode
+    !pip install --upgrade pip
+    !pip install -U numpy #Volver a reiniciar el entorno de ejecución
+
+# Instalación de librerías necesarias con pip
+!pip install spacy --upgrade
+!pip install emoji --upgrade
+!pip install pandas --upgrade
+!pip install numpy --upgrade
+!pip install regex --upgrade
+!pip install matplotlib --upgrade
+!pip install seaborn --upgrade
+!pip install plotly==4.*  # Específicamente la versión 4.x de Plotly
+!pip install pyldavis --upgrade
+!pip install chart_studio --upgrade
+!pip install nltk --upgrade
+!pip install wordcloud --upgrade
+
+#Se cargan las librerias
+#Base and Cleaning
+import json
+import requests
+import pandas as pd
+import numpy as np
+import emoji
+import regex
+import re
+import string
+import pandas as pd
+from collections import Counter
+from random import seed
+from unidecode import unidecode
+
+#Visualizations
+import plotly.express as px
+import seaborn as sns
+import matplotlib.pyplot as plt
+import pyLDAvis
+import chart_studio
+import chart_studio.plotly as py
+import chart_studio.tools as tls
+import matplotlib.pyplot as plt
+import pyLDAvis.gensim_models as gensimvis
+
+#Natural Language Processing (NLP)
+import spacy
+import gensim
+from spacy.tokenizer import Tokenizer
+from gensim.corpora import Dictionary
+from gensim.models.ldamulticore import LdaMulticore
+from gensim import models
+from gensim.models.coherencemodel import CoherenceModel
+from gensim.parsing.preprocessing import STOPWORDS as SW
+from sklearn.decomposition import LatentDirichletAllocation, TruncatedSVD
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+from sklearn.model_selection import GridSearchCV
+from pprint import pprint
+from wordcloud import WordCloud, STOPWORDS
+stopwords = set(STOPWORDS)
+import nltk
+from nltk.tokenize import word_tokenize
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+nltk.download('stopwords')
+from nltk.corpus import stopwords
+
+#Pre-procesado de datos
+#Se cargan los datos obtenidos en R
+df_analisis = pd.read_csv('df_energía.csv',sep=';')
+
+#Verificamos que los datos se han cargado correctamente mostrando las primeras filas
+print(df_analisis.head())
+
+
+
