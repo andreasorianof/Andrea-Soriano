@@ -1,95 +1,216 @@
-#Se descarga la biblioteca Spacy
-!python -m spacy download en_core_web_sm # Se reincia el entorno de ejecución
+# Instalamos y cargamos las librerías necesarias
+install.packages(c("readr", "dplyr", "ggplot2", "tidyverse", "data.table", "stringr", "textclean", "tm"))
 
-#Se carga la librería
-import spacy
-nlp = spacy.load('en_core_web_sm')
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(data.table)
+library(stringr)
+library(textclean)
+library(tm)
 
-#Se intalan los distintos paquetes que se van a utilizar
-import sys
-if 'google.colab' in sys.modules:
-    !pip install emoji --upgrade
-    !pip install pandas-profiling==2.*
-    !pip install plotly==4.*
-    !python -m spacy download es_core_news_sm
-    !pip install pyldavis
-    !pip install gensim
-    !pip install nltk
-    !pip install chart_studio
-    !pip install --upgrade autopep8
-    !pip install vaderSentiment
-    !pip install datatable
-    !pip install unidecode
-    !pip install --upgrade pip
-    !pip install -U numpy #Volver a reiniciar el entorno de ejecución
+# Carga de datos desde un archivo CSV
+df <- read_csv("TFG Analytics/energy_transition_tweets_final.csv")
 
-# Instalación de librerías necesarias con pip
-!pip install spacy --upgrade
-!pip install emoji --upgrade
-!pip install pandas --upgrade
-!pip install numpy --upgrade
-!pip install regex --upgrade
-!pip install matplotlib --upgrade
-!pip install seaborn --upgrade
-!pip install plotly==4.*  # Específicamente la versión 4.x de Plotly
-!pip install pyldavis --upgrade
-!pip install chart_studio --upgrade
-!pip install nltk --upgrade
-!pip install wordcloud --upgrade
+#Visualizamos los datos en conjunto así como el contenido de las columnas actuales
+View(df)
+colnames(df)
+df$tweetURL
+df$date
+df$tweetContent
+df$userLocation
+df$isUserVerified
+df$replyCount
+df$retweetCount
+df$likeCount
+df$quoteCount
+df$tweetLanguage
+df$sourceLabel
+df$coordinates
+df$place
 
-#Se cargan las librerias
-#Base and Cleaning
-import json
-import requests
-import pandas as pd
-import numpy as np
-import emoji
-import regex
-import re
-import string
-import pandas as pd
-from collections import Counter
-from random import seed
-from unidecode import unidecode
+#Eliminamos aquellas columnas que nos nos aportan datos relevantes para realizar nuestro análisis
+df$tweetURL <- NULL
+df$userLocation <- NULL
+df$isUserVerified <- NULL
+df$quoteCount <- NULL
+df$sourceLabel <- NULL
+df$coordinates <- NULL
+df$place <- NULL
+View(df)
 
-#Visualizations
-import plotly.express as px
-import seaborn as sns
-import matplotlib.pyplot as plt
-import pyLDAvis
-import chart_studio
-import chart_studio.plotly as py
-import chart_studio.tools as tls
-import matplotlib.pyplot as plt
-import pyLDAvis.gensim_models as gensimvis
+# Conversión y formateo de fechas
+df$date <- as.Date(df$date, format="%Y-%m-%d")
+df$year <- format(df$date, "%Y")
+df$month <- format(df$date, "%m")
+df$day <- format(df$date, "%d")
 
-#Natural Language Processing (NLP)
-import spacy
-import gensim
-from spacy.tokenizer import Tokenizer
-from gensim.corpora import Dictionary
-from gensim.models.ldamulticore import LdaMulticore
-from gensim import models
-from gensim.models.coherencemodel import CoherenceModel
-from gensim.parsing.preprocessing import STOPWORDS as SW
-from sklearn.decomposition import LatentDirichletAllocation, TruncatedSVD
-from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
-from sklearn.model_selection import GridSearchCV
-from pprint import pprint
-from wordcloud import WordCloud, STOPWORDS
-stopwords = set(STOPWORDS)
-import nltk
-from nltk.tokenize import word_tokenize
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-nltk.download('stopwords')
-from nltk.corpus import stopwords
+# Realizamos los principales análisis
 
-#Pre-procesado de datos
-#Se cargan los datos obtenidos en R
-df_analisis = pd.read_csv('df_energía.csv',sep=';')
+#Analizamos en número de tweets por fecha 
+number_tweets_bydate <- df %>% 
+  group_by(date) %>% 
+  summarise(count = n())
 
-#Verificamos que los datos se han cargado correctamente mostrando las primeras filas
-print(df_analisis.head())
+# Generamos un histograma para el número de tweets por fecha
+ggplot(number_tweets_bydate, aes(x=date, y=count)) +
+  geom_bar(stat="identity", fill="steelblue") +
+  theme_minimal() +
+  labs(x="Fecha", y="Número de Tweets", title="Número de Tweets por Fecha") +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
 
 
+# Analizamos el número de tweets por idioma y eliminamos aquellos donde el idioma es 'und'es decir, undefined.
+number_tweets_bylang_cleaned <- df %>%
+  filter(tweetLanguage != "und") %>%
+  group_by(tweetLanguage) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))  # Ordenamos de forma descendente por el número de tweets
 
+# Diccionario de abreviaturas a nombres completos
+idiomas <- c("en" = "Inglés", "es" = "Español", "fr" = "Francés", "de" = "Alemán", "it" = "Italiano",
+             "pt" = "Portugués", "ru" = "Ruso", "ja" = "Japonés", "zh" = "Chino")
+
+# Aplicamos el mapeo de los idiomas
+number_tweets_bylang_cleaned$tweetLanguage <- idiomas[number_tweets_bylang_cleaned$tweetLanguage]
+
+# Tomamos solo los top 5 idiomas con más tweets
+number_tweets_bylang_top5 <- head(number_tweets_bylang_cleaned, 5)
+
+# Añadir una columna para el color, rosa para 'English', azul para los demás
+number_tweets_bylang_top5 <- number_tweets_bylang_top5 %>%
+  mutate(color = ifelse(tweetLanguage == "Inglés", "pink", "steelblue"))
+
+# Generamos un histograma para el número de tweets por idioma
+ggplot(number_tweets_bylang_top5, aes(x = reorder(tweetLanguage, -count), y = count, fill = color)) +
+  geom_col(show.legend = FALSE) +
+  scale_fill_identity() +
+  theme_minimal() +
+  labs(x = "Idioma", y = "Número de Tweets", title = "Número de Tweets por Idioma") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_rect(fill = "white", colour = NA))
+
+# Imprimir el DataFrame de los top 5 idiomas para revisión
+print(number_tweets_bylang_top5)
+
+# Análisis de la distribución de retweets
+number_retweets <- df %>%
+  group_by(retweetCount) %>%
+  summarise(count = n()) %>%
+  filter(retweetCount > 0)  # Excluimos publicaciones sin retweets para focalizar en las que tienen actividad
+
+# Añadimos un índice a cada tweet
+df <- df %>% 
+  mutate(tweet_index = row_number())  # Crea una nueva columna 'tweet_index' con un número único para cada fila
+
+# Generamos un gráfico de dispersión para el número de retweets por publicación
+ggplot(df, aes(x=tweet_index, y=retweetCount)) +
+  geom_point(alpha=0.5, color="blue") +  
+  theme_minimal() +
+  labs(x="Índice de Publicación", y="Número de Retweets", title="Retweets por Publicación") +
+  theme(
+    axis.text.x = element_blank(),  
+    axis.ticks.x = element_blank(), 
+    panel.grid.major = element_blank(),  
+    panel.grid.minor = element_blank(),  
+    panel.background = element_blank()   
+  )
+
+# Preparamos los daros para analizar los likes por cada tweet
+df <- df %>%
+  mutate(tweet_index = row_number())  # Añadimos un índice único para cada tweet
+
+# Analizamos la distribución de likes, eliminando aquellos con cero likes
+number_likes <- df %>%
+  filter(likeCount > 0) %>%
+  group_by(tweet_index, likeCount) %>%
+  summarise(count = n(), .groups = 'drop')  
+
+# Generamos un gráfico de dispersión para el número de likes por publicación
+ggplot(number_likes, aes(x=tweet_index, y=likeCount)) +
+  geom_point(alpha=0.5, color="blue", size=1.5) +   
+  theme_minimal() +
+  labs(x="Índice de Publicación", y="Número de Likes", title="Likes por Publicación") +
+  theme(
+    axis.text.x = element_blank(),  
+    axis.ticks.x = element_blank(), 
+    panel.grid.major = element_blank(),  
+    panel.grid.minor = element_blank(),  
+    panel.background = element_blank()   
+  )
+
+# Sacamos la lista de los principales hashtags más utilizados
+all_hashtags <- unlist(
+  str_extract_all(df$tweetContent, "#\\w+")
+)
+freq_count <- as.data.frame(table(all_hashtags))
+freq_count <- freq_count[order(freq_count$Freq, decreasing = TRUE),]
+View(all_hashtags)
+
+all_hashtags <- unlist(str_extract_all(df$tweetContent, "#\\w+"))
+freq_count <- as.data.frame(table(all_hashtags))
+colnames(freq_count) <- c("Hashtag", "Frequency")
+freq_count <- freq_count[order(-freq_count$Frequency),]
+top_hashtags <- head(freq_count, 20)
+
+# Generamos el histograma con los hashtags más utilizados
+ggplot(top_hashtags, aes(x=reorder(Hashtag, -Frequency), y=Frequency)) +
+  geom_col(fill="steelblue") +
+  labs(title="Principales Hashtags utilizados", x="Hashtags", y="Frecuencia") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle=90, hjust=1),  # Ajusta el texto del eje X para mejor visualización
+    panel.grid.major = element_blank(),  # Elimina las líneas de la cuadrícula principales
+    panel.grid.minor = element_blank(),  # Elimina las líneas de la cuadrícula menores
+    panel.background = element_blank()   # Elimina el fondo del panel
+  )
+  
+
+# Pre-procesamiento de texto
+stopw <- stopwords("english")  # Usar stopwords en inglés
+
+clean <- function(x) {
+  if (!(is.na(x))) {
+    x <- gsub("http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+", "", x) # Remove URLs
+    x <- gsub("@\\w+", "", x)  # Remove mentions
+    x <- gsub("#\\w+", "", x)  # Remove hashtags
+    x <- gsub("\\d+", "", x)   # Remove all digits
+    x <- gsub("[[:punct:]]", " ", x) # Replace punctuation with spaces
+    x <- tolower(x)  # Convert to lowercase
+    x <- iconv(x, "latin1", "ASCII", sub="") # Encoding fix
+    x <- removeWords(x, stopw)  # Remove stopwords
+    x <- gsub('\\b\\w{1,2}\\b', '', x)  # Remove short words
+    x <- gsub("\\s+", " ", x)  # Replace multiple spaces with a single space
+    x <- trimws(x)  # Trim whitespace from the beginning and end of text
+  }
+  return(x)
+}
+
+df$cleaned_text <- sapply(df$tweetContent, clean)
+
+# Sacamos el corpus limpio
+df_filtered <- df[!(is.na(df$cleaned_text) | df$cleaned_text == ""), ]
+drop <- c("tweetContent")
+df_filtered <- df_filtered[, !(names(df_filtered) %in% drop)]
+View(df_filtered)
+
+# Exportamos a CSV
+write.csv2(df_filtered, "df_energía.csv", row.names = FALSE)
+write.csv2(df_filtered, "C:/Usuarios/andre/Documents/df_energía.csv", row.names = FALSE)
+
+
+#Establecer la ruta como directorio de trabajo
+nombre_de_usuario <- "andre"
+ruta <- paste0("C:/Usuarios/andre/Documents/")
+
+if (!dir.exists(ruta)) {
+  dir.create(ruta, recursive = TRUE)
+}
+
+setwd(ruta)
+
+# Guardamos nuestros nuevos datos
+write.csv2(df_filtered, "df_energía.csv", row.names = FALSE)
