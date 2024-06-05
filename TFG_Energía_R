@@ -47,7 +47,6 @@ df$month <- format(df$date, "%m")
 df$day <- format(df$date, "%d")
 
 
-
 #Se realizan los principales análisis
 
 #Se analiza en número de publicaciones por fecha 
