@@ -117,7 +117,7 @@ df_filtered2 <- df[df$`retweetCount` >= lower_whisker & df$`retweetCount` <= upp
 
 ggplot(df_filtered2, aes(x=factor(0), y=retweetCount)) +
   geom_boxplot(outlier.shape = NA, coef=1.5) +  
-  scale_y_continuous(limits=c(0, 50)) +  
+  scale_y_continuous() +  
   labs(x="", y="Número de Retweets", title="Distribución de Retweets por Publicación") +
   theme_minimal() +
   theme(
@@ -147,7 +147,7 @@ df_filtered <- df[df$`likeCount` >= lower_whisker & df$`likeCount` <= upper_whis
 
 ggplot(df_filtered, aes(x=factor(0), y=likeCount)) +
   geom_boxplot(outlier.shape = NA, coef=1.5) +  
-  scale_y_continuous(limits=c(0, 50)) +  
+  scale_y_continuous() +  
   labs(x="", y="Número de Likes", title="Distribución de Likes por Publicación") +
   theme_minimal() +
   theme(
