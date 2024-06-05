@@ -1,4 +1,4 @@
-# Instalamos y cargamos las librerías necesarias
+# Se instalan y cargan las librerías necesarias
 install.packages(c("readr", "dplyr", "ggplot2", "tidyverse", "data.table", "stringr", "textclean", "tm"))
 
 library(readr)
@@ -10,10 +10,10 @@ library(stringr)
 library(textclean)
 library(tm)
 
-# Carga de datos desde un archivo CSV
+# Se cargan los datos que se van a utilizar desde un archivo CSV
 df <- read_csv("TFG Analytics/energy_transition_tweets_final.csv")
 
-#Visualizamos los datos en conjunto así como el contenido de las columnas actuales
+#Se visualizan los datos en conjunto así como el contenido de las columnas actuales
 View(df)
 colnames(df)
 df$tweetURL
@@ -30,7 +30,7 @@ df$sourceLabel
 df$coordinates
 df$place
 
-#Eliminamos aquellas columnas que nos nos aportan datos relevantes para realizar nuestro análisis
+#Se eliminan aquellas columnas que no aportan datos relevantes para realizar el análisis
 df$tweetURL <- NULL
 df$userLocation <- NULL
 df$isUserVerified <- NULL
@@ -40,20 +40,22 @@ df$coordinates <- NULL
 df$place <- NULL
 View(df)
 
-# Conversión y formateo de fechas
+# Se convierten las fechas al mismo formato
 df$date <- as.Date(df$date, format="%Y-%m-%d")
 df$year <- format(df$date, "%Y")
 df$month <- format(df$date, "%m")
 df$day <- format(df$date, "%d")
 
-# Realizamos los principales análisis
 
-#Analizamos en número de tweets por fecha 
+
+#Se realizan los principales análisis
+
+#Se analiza en número de publicaciones por fecha 
 number_tweets_bydate <- df %>% 
   group_by(date) %>% 
   summarise(count = n())
 
-# Generamos un histograma para el número de tweets por fecha
+#Se genera un histograma para el número de publicaciones por fecha
 ggplot(number_tweets_bydate, aes(x=date, y=count)) +
   geom_bar(stat="identity", fill="steelblue") +
   theme_minimal() +
@@ -61,88 +63,103 @@ ggplot(number_tweets_bydate, aes(x=date, y=count)) +
   theme(axis.text.x = element_text(angle=45, hjust=1))
 
 
-# Analizamos el número de tweets por idioma y eliminamos aquellos donde el idioma es 'und'es decir, undefined.
+#Se analiza el número de publicaciones por idioma y se eliminan aquellas donde el idioma es 'und' es decir, undefined.
 number_tweets_bylang_cleaned <- df %>%
   filter(tweetLanguage != "und") %>%
   group_by(tweetLanguage) %>%
   summarise(count = n()) %>%
-  arrange(desc(count))  # Ordenamos de forma descendente por el número de tweets
+  arrange(desc(count))  #Se ordena de forma descendente por el número de publicaciones
 
-# Diccionario de abreviaturas a nombres completos
+#Se signa el diccionario de abreviaturas a nombres completos
 idiomas <- c("en" = "Inglés", "es" = "Español", "fr" = "Francés", "de" = "Alemán", "it" = "Italiano",
              "pt" = "Portugués", "ru" = "Ruso", "ja" = "Japonés", "zh" = "Chino")
 
-# Aplicamos el mapeo de los idiomas
+#Se aplica el mapeo de los idiomas
 number_tweets_bylang_cleaned$tweetLanguage <- idiomas[number_tweets_bylang_cleaned$tweetLanguage]
 
-# Tomamos solo los top 5 idiomas con más tweets
+#Se cogen solo los top 5 idiomas con más publicaciones
 number_tweets_bylang_top5 <- head(number_tweets_bylang_cleaned, 5)
 
-# Añadir una columna para el color, rosa para 'English', azul para los demás
+#Se añade una columna para el color: rosa para 'English' y azul para los demás
 number_tweets_bylang_top5 <- number_tweets_bylang_top5 %>%
   mutate(color = ifelse(tweetLanguage == "Inglés", "pink", "steelblue"))
 
-# Generamos un histograma para el número de tweets por idioma
+#Se genera un histograma para el número de publicaciones por idioma
 ggplot(number_tweets_bylang_top5, aes(x = reorder(tweetLanguage, -count), y = count, fill = color)) +
   geom_col(show.legend = FALSE) +
   scale_fill_identity() +
   theme_minimal() +
   labs(x = "Idioma", y = "Número de Tweets", title = "Número de Tweets por Idioma") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+  theme(axis.text.x = element_text(angle = 0, hjust = 1),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
         panel.background = element_rect(fill = "white", colour = NA))
 
-# Imprimir el DataFrame de los top 5 idiomas para revisión
+#Se imprime el DataFrame de los top 5 idiomas para revisar
 print(number_tweets_bylang_top5)
 
-# Análisis de la distribución de retweets
+#Se analiza de la distribución de retweets
 number_retweets <- df %>%
   group_by(retweetCount) %>%
   summarise(count = n()) %>%
-  filter(retweetCount > 0)  # Excluimos publicaciones sin retweets para focalizar en las que tienen actividad
+  filter(retweetCount > 0)  
+boxplot_stats2 <- boxplot.stats(df$`retweetCount`)
 
-# Añadimos un índice a cada tweet
-df <- df %>% 
-  mutate(tweet_index = row_number())  # Crea una nueva columna 'tweet_index' con un número único para cada fila
+#Se extraen los bigotes inferior y superior
 
-# Generamos un gráfico de dispersión para el número de retweets por publicación
-ggplot(df, aes(x=tweet_index, y=retweetCount)) +
-  geom_point(alpha=0.5, color="blue") +  
+lower_whisker <- boxplot_stats2$stats[1]
+
+upper_whisker <- boxplot_stats2$stats[5]
+
+#Se filtran los datos sin outliers
+
+df_filtered2 <- df[df$`retweetCount` >= lower_whisker & df$`retweetCount` <= upper_whisker, ]
+
+ggplot(df_filtered2, aes(x=factor(0), y=retweetCount)) +
+  geom_boxplot(outlier.shape = NA, coef=1.5) +  
+  scale_y_continuous(limits=c(0, 50)) +  
+  labs(x="", y="Número de Retweets", title="Distribución de Retweets por Publicación") +
   theme_minimal() +
-  labs(x="Índice de Publicación", y="Número de Retweets", title="Retweets por Publicación") +
   theme(
-    axis.text.x = element_blank(),  
-    axis.ticks.x = element_blank(), 
-    panel.grid.major = element_blank(),  
-    panel.grid.minor = element_blank(),  
-    panel.background = element_blank()   
+    axis.text.x = element_blank(), 
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size=15),  
+    axis.title.y = element_text(size=17), 
+    plot.title = element_text(size=17)    
   )
 
-# Preparamos los daros para analizar los likes por cada tweet
+
+#Se preparan los datos para analizar los likes por cada publicación
 df <- df %>%
-  mutate(tweet_index = row_number())  # Añadimos un índice único para cada tweet
+  filter(likeCount > 0)  # Filtramos para excluir publicaciones sin 'likes'
 
-# Analizamos la distribución de likes, eliminando aquellos con cero likes
-number_likes <- df %>%
-  filter(likeCount > 0) %>%
-  group_by(tweet_index, likeCount) %>%
-  summarise(count = n(), .groups = 'drop')  
+boxplot_stats <- boxplot.stats(df$`likeCount`)
 
-# Generamos un gráfico de dispersión para el número de likes por publicación
-ggplot(number_likes, aes(x=tweet_index, y=likeCount)) +
-  geom_point(alpha=0.5, color="blue", size=1.5) +   
+#Se extraen los bigotes inferior y superior
+
+lower_whisker <- boxplot_stats$stats[1]
+
+upper_whisker <- boxplot_stats$stats[5]
+
+#S filtran los datos sin outliers
+
+df_filtered <- df[df$`likeCount` >= lower_whisker & df$`likeCount` <= upper_whisker, ]
+
+ggplot(df_filtered, aes(x=factor(0), y=likeCount)) +
+  geom_boxplot(outlier.shape = NA, coef=1.5) +  
+  scale_y_continuous(limits=c(0, 50)) +  
+  labs(x="", y="Número de Likes", title="Distribución de Likes por Publicación") +
   theme_minimal() +
-  labs(x="Índice de Publicación", y="Número de Likes", title="Likes por Publicación") +
   theme(
-    axis.text.x = element_blank(),  
-    axis.ticks.x = element_blank(), 
-    panel.grid.major = element_blank(),  
-    panel.grid.minor = element_blank(),  
-    panel.background = element_blank()   
+    axis.text.x = element_blank(), 
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size=15),  
+    axis.title.y = element_text(size=17), 
+    plot.title = element_text(size=17)    
   )
 
-# Sacamos la lista de los principales hashtags más utilizados
+
+#Se saca la lista de los principales hashtags más utilizados
 all_hashtags <- unlist(
   str_extract_all(df$tweetContent, "#\\w+")
 )
@@ -156,7 +173,7 @@ colnames(freq_count) <- c("Hashtag", "Frequency")
 freq_count <- freq_count[order(-freq_count$Frequency),]
 top_hashtags <- head(freq_count, 20)
 
-# Generamos el histograma con los hashtags más utilizados
+#Se genera el histograma con los hashtags más utilizados
 ggplot(top_hashtags, aes(x=reorder(Hashtag, -Frequency), y=Frequency)) +
   geom_col(fill="steelblue") +
   labs(title="Principales Hashtags utilizados", x="Hashtags", y="Frecuencia") +
@@ -167,50 +184,33 @@ ggplot(top_hashtags, aes(x=reorder(Hashtag, -Frequency), y=Frequency)) +
     panel.grid.minor = element_blank(),  # Elimina las líneas de la cuadrícula menores
     panel.background = element_blank()   # Elimina el fondo del panel
   )
-  
 
-# Pre-procesamiento de texto
-stopw <- stopwords("english")  # Usar stopwords en inglés
+
+#Se realiza el preprocesamiento de los datos 
 
 clean <- function(x) {
   if (!(is.na(x))) {
-    x <- gsub("http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+", "", x) # Remove URLs
-    x <- gsub("@\\w+", "", x)  # Remove mentions
-    x <- gsub("#\\w+", "", x)  # Remove hashtags
-    x <- gsub("\\d+", "", x)   # Remove all digits
-    x <- gsub("[[:punct:]]", " ", x) # Replace punctuation with spaces
-    x <- tolower(x)  # Convert to lowercase
+    x <- gsub("http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+", "", x) #eliminar URLs
+    x <- gsub("@\\w+", "", x)  #eliminar menciones
+    x <- gsub("#\\w+", "", x)  #eliminar hashtags
+    x <- gsub("\\d+", "", x)   #eliminar dígitos
     x <- iconv(x, "latin1", "ASCII", sub="") # Encoding fix
-    x <- removeWords(x, stopw)  # Remove stopwords
-    x <- gsub('\\b\\w{1,2}\\b', '', x)  # Remove short words
-    x <- gsub("\\s+", " ", x)  # Replace multiple spaces with a single space
-    x <- trimws(x)  # Trim whitespace from the beginning and end of text
+    x <- gsub('\\b\\w{1,2}\\b', '', x)  #eliminar palabras cortas
+    x <- gsub("\\s+", " ", x)  #reemplazar muchos espacios con uno solo
+    x <- trimws(x)  # cortar espacios en blanco al principio y final del texto
   }
   return(x)
 }
 
 df$cleaned_text <- sapply(df$tweetContent, clean)
 
-# Sacamos el corpus limpio
+
+#Se saca el corpus limpio
 df_filtered <- df[!(is.na(df$cleaned_text) | df$cleaned_text == ""), ]
 drop <- c("tweetContent")
 df_filtered <- df_filtered[, !(names(df_filtered) %in% drop)]
 View(df_filtered)
 
-# Exportamos a CSV
-write.csv2(df_filtered, "df_energía.csv", row.names = FALSE)
-write.csv2(df_filtered, "C:/Usuarios/andre/Documents/df_energía.csv", row.names = FALSE)
-
-
-#Establecer la ruta como directorio de trabajo
-nombre_de_usuario <- "andre"
-ruta <- paste0("C:/Usuarios/andre/Documents/")
-
-if (!dir.exists(ruta)) {
-  dir.create(ruta, recursive = TRUE)
-}
-
-setwd(ruta)
-
-# Guardamos nuestros nuevos datos
-write.csv2(df_filtered, "df_energía.csv", row.names = FALSE)
+#Se exporta lo obtenido a un CSV
+write.csv2(df_filtered, "df_energía_as.csv", row.names = FALSE)
+write.csv2(df_filtered, "C:/Usuarios/andre/Documents/df_energía_as.csv", row.names = FALSE)
